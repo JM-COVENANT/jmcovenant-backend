@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JMS Admin Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; background: #fafafa; color: #111; }
+    h1 { margin: 0 0 16px; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 14px; }
+    .label { color: #666; font-size: 13px; margin-bottom: 8px; }
+    .value { font-size: 24px; font-weight: bold; }
+    .bar { margin: 14px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+    input, button { padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+    button { background: #111; color: #fff; border: 0; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; overflow: hidden; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { background: #f6f6f6; }
+    #status { color: #666; margin: 8px 0 16px; }
+  </style>
+</head>
+<body>
+  <h1>JMS Admin Dashboard</h1>
+
+  <div class="bar">
+    <input id="apiKey" type="password" placeholder="INTERNAL_API_KEY" style="min-width:280px;">
+    <button id="refreshBtn" onclick="refreshAll()">Vernieuwen</button>
+  </div>
+  <div id="status">Voer je API-key in en klik op Vernieuwen.</div>
+
+  <div class="row">
+    <div class="card"><div class="label">Totaal users</div><div id="totalUsers" class="value">-</div></div>
+    <div class="card"><div class="label">Betaalde users</div><div id="paidUsers" class="value">-</div></div>
+    <div class="card"><div class="label">Free users</div><div id="freeUsers" class="value">-</div></div>
+    <div class="card"><div class="label">Totale usage</div><div id="totalUsage" class="value">-</div></div>
+    <div class="card"><div class="label">Gemiddelde usage</div><div id="avgUsage" class="value">-</div></div>
+  </div>
+
+  <h3>Top gebruikers</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Paid</th>
+        <th>Usage</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody id="usersBody">
+      <tr><td colspan="4">Nog geen data</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:18px;">Recente leads</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Datum</th>
+      </tr>
+    </thead>
+    <tbody id="leadsBody">
+      <tr><td colspan="2">Nog geen data</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    async function adminFetch(path) {
+      const apiKey = document.getElementById("apiKey").value.trim();
+      const res = await fetch(path, {
+        headers: { "X-Api-Key": apiKey }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        throw new Error(data.error || ("HTTP " + res.status));
+      }
+      return data;
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).innerText = value;
+    }
+
+    function renderUsers(users) {
+      const body = document.getElementById("usersBody");
+      if (!users.length) {
+        body.innerHTML = "<tr><td colspan='4'>Geen users gevonden</td></tr>";
+        return;
+      }
+      body.innerHTML = users.slice(0, 25).map(function (u) {
+        return "<tr>" +
+          "<td>" + u.email + "</td>" +
+          "<td>" + (u.is_paid ? "Ja" : "Nee") + "</td>" +
+          "<td>" + u.usage_count + "</td>" +
+          "<td>" + (u.updated_at || "-") + "</td>" +
+          "</tr>";
+      }).join("");
+    }
+
+    function renderLeads(leads) {
+      const body = document.getElementById("leadsBody");
+      if (!leads.length) {
+        body.innerHTML = "<tr><td colspan='2'>Geen leads gevonden</td></tr>";
+        return;
+      }
+      body.innerHTML = leads.slice(0, 25).map(function (l) {
+        return "<tr><td>" + (l.email || "-") + "</td><td>" + (l.date || "-") + "</td></tr>";
+      }).join("");
+    }
+
+    async function refreshAll() {
+      const btn = document.getElementById("refreshBtn");
+      const status = document.getElementById("status");
+      btn.disabled = true;
+      status.innerText = "Data ophalen...";
+
+      try {
+        const stats = await adminFetch("/admin/stats");
+        const users = await adminFetch("/admin/users");
+        const leads = await adminFetch("/admin/leads");
+
+        setText("totalUsers", stats.total_users);
+        setText("paidUsers", stats.paid_users);
+        setText("freeUsers", stats.free_users);
+        setText("totalUsage", stats.total_usage);
+        setText("avgUsage", stats.avg_usage);
+
+        renderUsers(users.users || []);
+        renderLeads(leads.leads || []);
+        status.innerText = "Dashboard bijgewerkt.";
+      } catch (err) {
+        status.innerText = "Fout: " + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

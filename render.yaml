@@ -1,0 +1,14 @@
+# Optioneel: Render Blueprint (Git-gedreven deploy). Handmatige service: zelfde build/start in het dashboard.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: jmcovenant-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+    # Zet in het dashboard: SECRET_KEY, STRIPE_*, etc. (geen geheimen in git)

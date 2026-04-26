@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+.venv/
+env/
+
+# Environment
+.env
+
+# Generated files
+generated_pds/
+data/*.csv
+data/*.jsonl
+
+# OS
+.DS_Store
+Thumbs.db
