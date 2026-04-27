@@ -95,6 +95,7 @@ def create_app():
     def internal_error(_error):
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
+    @limiter.exempt
     @app.route("/health", methods=["GET"])
     def health():
         return jsonify({"status": "ok"})
